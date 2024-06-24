@@ -40,15 +40,6 @@ fn main() {
         }
         _ => panic!("hsdf")
     }
-
-    // if pth.is_file() {
-    //     let data = fs::read(pth)
-    //         .expect("Unable to read file.");
-    //     let enc = encrypt(&key_str, data);
-
-    //     fs::write(pth, enc)
-    //         .expect("Unable to write file.");
-    // }
 }
 
 
