@@ -3,69 +3,91 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce
 };
 
+use std::io;
 use std::fs;
 use std::env;
 use std::path::Path;
 
 enum Control {
-    FileEnc,
-    FileDec,
-    DirEnc,
-    DirDec
+    Encrypt,
+    Decrypt
 }
 
 fn main() {
-    let pth     = Path::new("./test/heart.png");
+    let pth     = Path::new("./test/");
     let key_str = "thiskeystrmustbe32charlongtowork".to_string();
 
-    let con = Control::FileDec;
+    let con = Control::Decrypt;
 
     match con {
-        Control::FileEnc => {
-            let data = fs::read(pth)
-                .expect("Unable to read file.");
-            let data = encrypt(&key_str, data);
-    
-            fs::write(pth, data)
-                .expect("Unable to write encrypted data to file.");
+        Control::Encrypt => {
+            encrypt(&key_str, pth)
+                .expect("encrypt failed.");
+
         }
-        Control::FileDec => {
-            let data = String::from_utf8(fs::read(pth)
-                            .expect("Unable to read file."))
-                            .expect("Unable to convert data to String.");
-            
-            let data = decrypt(key_str, data);
-            fs::write(pth, data)
-                .expect("Unable to write decrypted data to file.");
+        Control::Decrypt => {
+            decrypt(&key_str, pth)
+                .expect("decrypt failed.");
         }
-        _ => panic!("hsdf")
     }
 }
 
+fn encrypt(key_str: &String, dir: &Path) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path  = entry.path();
 
-fn encrypt(key_str: &String, data: Vec<u8>) -> String {
-    let key = Key::<Aes256Gcm>::from_slice(key_str.as_bytes());
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-    let cipher = Aes256Gcm::new(key);
-    let cipher_text = cipher.encrypt(&nonce, &*data)
-        .expect("failed to encrypt");
+            encrypt(key_str, &path)
+                .expect("Encrypt failed.");
+        }
 
-    let mut encryped_data: Vec<u8> = nonce.to_vec();
-    encryped_data.extend_from_slice(&cipher_text);
+    } else {
+        let data: Vec<u8> = fs::read(dir)
+            .expect("Unable to read file.");
 
-    return hex::encode(encryped_data);
+        let key = Key::<Aes256Gcm>::from_slice(key_str.as_bytes());
+        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+        let cipher = Aes256Gcm::new(key);
+        let cipher_text = cipher.encrypt(&nonce, &*data)
+            .expect("failed to encrypt");
+    
+        let mut encryped_data: Vec<u8> = nonce.to_vec();
+        encryped_data.extend_from_slice(&cipher_text);
+    
+        fs::write(dir, hex::encode(encryped_data))
+            .expect("Encrypt: Unable to write data.");
+    }
+
+    return Ok(());
 }
 
-fn decrypt(key_str: String, encrypted_data: String) -> Vec<u8> {
-    let encrypted_data = hex::decode(encrypted_data)
-        .expect("failed to decode hex string into vec");
+fn decrypt(key_str: &String, dir: &Path) -> io::Result<()> {
+    if dir.is_dir() {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path  = entry.path();
 
-    let key = Key::<Aes256Gcm>::from_slice(key_str.as_bytes());
-    let (nonce_arr, ciphered_data) = encrypted_data.split_at(12);
-    let nonce = Nonce::from_slice(nonce_arr);
-    let cipher = Aes256Gcm::new(key);
-    let decrypted_data = cipher.decrypt(nonce, ciphered_data)
-        .expect("failed to decrypt data");
+            decrypt(key_str, &path)
+                .expect("Decrypt failed.")
+        }
 
-    return decrypted_data;
+    } else {
+        let encrypted_data = hex::decode(String::from_utf8(fs::read(dir)
+            .expect("Unable to read file."))
+            .expect("Unable to convert to String from utf8"))
+            .expect("Failed to decode hex string into Vec<u8>.");
+
+        let key = Key::<Aes256Gcm>::from_slice(key_str.as_bytes());
+        let (nonce_arr, ciphered_data) = encrypted_data.split_at(12);
+        let nonce = Nonce::from_slice(nonce_arr);
+        let cipher = Aes256Gcm::new(key);
+        let decrypted_data = cipher.decrypt(nonce, ciphered_data)
+            .expect("failed to decrypt data");
+    
+        fs::write(dir, decrypted_data)
+            .expect("Decrypt: Unable to write data.");
+    }
+
+    return Ok(());
 }
