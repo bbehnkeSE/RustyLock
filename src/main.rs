@@ -2,6 +2,12 @@ use aes_gcm::{
     aead::{ Aead, AeadCore, KeyInit, OsRng },
     Aes256Gcm, Key, Nonce
 };
+use sha2::{
+    Digest, 
+    Sha256,
+    digest::generic_array::typenum::U32,
+    digest::generic_array::GenericArray
+};
 
 use std::io;
 use std::fs;
@@ -14,31 +20,32 @@ enum Control {
 }
 
 fn main() {
-    let pth     = Path::new("./test/");
-    let key_str = "thiskeystrmustbe32charlongtowork".to_string();
+    let pth      = Path::new("./test/");
+    let password = "Password".to_string();
+    let key      = gen_key(password.as_bytes());
 
     let con = Control::Decrypt;
 
     match con {
         Control::Encrypt => {
-            encrypt(&key_str, pth)
+            encrypt(&key, pth)
                 .expect("encrypt failed.");
 
         }
         Control::Decrypt => {
-            decrypt(&key_str, pth)
+            decrypt(&key, pth)
                 .expect("decrypt failed.");
         }
     }
 }
 
-fn encrypt(key_str: &String, dir: &Path) -> io::Result<()> {
+fn encrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path  = entry.path();
 
-            encrypt(key_str, &path)
+            encrypt(key, &path)
                 .expect("Encrypt failed.");
         }
 
@@ -46,7 +53,7 @@ fn encrypt(key_str: &String, dir: &Path) -> io::Result<()> {
         let data: Vec<u8> = fs::read(dir)
             .expect("Unable to read file.");
 
-        let key = Key::<Aes256Gcm>::from_slice(key_str.as_bytes());
+        let key = Key::<Aes256Gcm>::from_slice(key);
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let cipher = Aes256Gcm::new(key);
         let cipher_text = cipher.encrypt(&nonce, &*data)
@@ -62,13 +69,13 @@ fn encrypt(key_str: &String, dir: &Path) -> io::Result<()> {
     return Ok(());
 }
 
-fn decrypt(key_str: &String, dir: &Path) -> io::Result<()> {
+fn decrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path  = entry.path();
 
-            decrypt(key_str, &path)
+            decrypt(key, &path)
                 .expect("Decrypt failed.")
         }
 
@@ -78,7 +85,7 @@ fn decrypt(key_str: &String, dir: &Path) -> io::Result<()> {
             .expect("Unable to convert to String from utf8"))
             .expect("Failed to decode hex string into Vec<u8>.");
 
-        let key = Key::<Aes256Gcm>::from_slice(key_str.as_bytes());
+        let key = Key::<Aes256Gcm>::from_slice(key);
         let (nonce_arr, ciphered_data) = encrypted_data.split_at(12);
         let nonce = Nonce::from_slice(nonce_arr);
         let cipher = Aes256Gcm::new(key);
@@ -90,4 +97,11 @@ fn decrypt(key_str: &String, dir: &Path) -> io::Result<()> {
     }
 
     return Ok(());
+}
+
+fn gen_key(password: &[u8]) -> GenericArray<u8, U32> {
+    let mut hash = Sha256::new();
+    hash.update(password);
+
+    return hash.finalize();
 }
