@@ -1,5 +1,10 @@
 use aes_gcm::{
-    aead::{ Aead, AeadCore, KeyInit, OsRng },
+    aead::{
+        Aead,
+        AeadCore,
+        KeyInit,
+        OsRng
+    },
     Aes256Gcm, Key, Nonce
 };
 use sha2::{
@@ -11,13 +16,14 @@ use sha2::{
 
 use std::io;
 use std::fs;
-use std::env;
 use std::path::Path;
+
 
 enum Control {
     Encrypt,
     Decrypt
 }
+
 
 fn main() {
     let pth      = Path::new("./test/");
@@ -30,7 +36,6 @@ fn main() {
         Control::Encrypt => {
             encrypt(&key, pth)
                 .expect("encrypt failed.");
-
         }
         Control::Decrypt => {
             decrypt(&key, pth)
@@ -38,6 +43,7 @@ fn main() {
         }
     }
 }
+
 
 fn encrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
@@ -69,6 +75,7 @@ fn encrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
     return Ok(());
 }
 
+
 fn decrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
@@ -98,6 +105,7 @@ fn decrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
 
     return Ok(());
 }
+
 
 fn gen_key(password: &[u8]) -> GenericArray<u8, U32> {
     let mut hash = Sha256::new();
