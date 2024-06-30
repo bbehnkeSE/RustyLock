@@ -1,13 +1,14 @@
 use std::env;
 use std::path::Path;
 
+pub mod locker;
+
 #[derive(Debug)]
 enum Control {
     Encrypt,
     Decrypt
 }
 
-pub mod locker;
 
 #[derive(Debug)]
 struct Options {
