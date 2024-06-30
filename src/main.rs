@@ -1,7 +1,7 @@
 use std::env;
 use std::path::Path;
 
-pub mod locker;
+mod locker;
 
 #[derive(Debug)]
 enum Control {
