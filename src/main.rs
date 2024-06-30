@@ -16,23 +16,46 @@ use sha2::{
 
 use std::io;
 use std::fs;
+use std::env;
 use std::path::Path;
 
-
+#[derive(Debug)]
 enum Control {
     Encrypt,
     Decrypt
 }
 
+#[derive(Debug)]
+struct Options {
+    control: Control,
+    path:    String,
+}
 
 fn main() {
-    let pth      = Path::new("./test/");
+    let args: Vec<String> = env::args().collect();
+    let mut opt: Options = { 
+        Options {
+            control: Control::Decrypt,
+            path: "".to_string()
+        }
+    };
+    for (i, arg) in args.iter().enumerate() {
+        if arg == "-e" {
+            opt.control = Control::Encrypt;
+        }
+        if arg == "-d" {
+            opt.control = Control::Decrypt;
+        }
+        if arg == "-p" {
+            opt.path = args[i + 1].clone();
+        }
+    }
+
+    let pth      = Path::new(&opt.path);
     let password = "Password".to_string();
     let key      = gen_key(password.as_bytes());
 
-    let con = Control::Decrypt;
-
-    match con {
+    match opt.control {
         Control::Encrypt => {
             encrypt(&key, pth)
                 .expect("encrypt failed.");
