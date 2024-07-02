@@ -37,7 +37,7 @@ fn main() {
     }
 
     let pth      = Path::new(&opt.path);
-    let password = "Password".to_string();
+    let password = rpassword::prompt_password("Enter password: ").unwrap();
     let key      = locker::gen_key(password.as_bytes());
 
     match opt.control {
