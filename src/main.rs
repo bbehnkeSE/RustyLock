@@ -1,9 +1,10 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::env;
 use std::path::Path;
 
 use eframe::egui;
+use locker::encrypt;
 
 mod locker;
 
@@ -72,7 +73,9 @@ struct Options {
 #[derive(Default)]
 struct RustyLock {
     dropped_files: Vec<egui::DroppedFile>,
-    picked_paths: Vec<Option<String>>
+    picked_paths: Vec<Option<String>>,
+    show_password_window: bool,
+    password: String
 }
 
 impl RustyLock {
@@ -87,6 +90,12 @@ impl RustyLock {
 
 impl eframe::App for RustyLock {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::TopBottomPanel::bottom("top_bot").show(ctx, |ui| {
+            if ui.button("encrypt").clicked() {
+                println!("Pushed");
+                self.show_password_window = true;
+            }
+        });
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Drag and drop files.");
 
@@ -142,7 +151,30 @@ impl eframe::App for RustyLock {
             if !i.raw.dropped_files.is_empty() {
                 self.dropped_files.clone_from(&i.raw.dropped_files);
             }
-        })
+        });
+
+        if self.show_password_window {
+            egui::Window::new("Enter password")
+                .show(ctx, |ui| {
+                    ui.label("Enter a password:");
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.password)
+                            .password(true)
+                    );
+                    // ui.text_edit_singleline(&mut self.password);
+                    ui.horizontal(|ui| {
+                        if ui.button("Submit").clicked() {
+                            println!("Password entered: {}", self.password);
+                            self.show_password_window = false;
+                            self.password = "".to_string();
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.password = "".to_string();
+                            self.show_password_window = false;
+                        }
+                    })
+                });
+        }
     }
 }
 
