@@ -156,13 +156,15 @@ impl eframe::App for RustyLock {
         if self.show_password_window {
             egui::Window::new("Enter password")
                 .show(ctx, |ui| {
+                    ui.add_space(10.0);
                     ui.label("Enter a password:");
                     ui.add(
                         egui::TextEdit::singleline(&mut self.password)
                             .password(true)
                     );
                     // ui.text_edit_singleline(&mut self.password);
-                    ui.horizontal(|ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        ui.add_space(20.0);
                         if ui.button("Submit").clicked() {
                             println!("Password entered: {}", self.password);
                             self.show_password_window = false;
