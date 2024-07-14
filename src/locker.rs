@@ -32,7 +32,7 @@ pub fn encrypt(key: &GenericArray<u8, U32>, path: &PathBuf) -> Result<(), io::Er
 
         match encrypted_data {
             Ok(encrypted_data) => fs::write(path, encrypted_data)?,
-            Err(e) => fs::write("./rusty_log.txt", e.to_string() + "\nEncryption failed.")?
+            Err(e) => fs::write("./rusty_error.log", e.to_string() + "\nEncryption failed.")?
         };
     }
     Ok(())
@@ -64,7 +64,7 @@ pub fn decrypt(key: &GenericArray<u8, U32>, path: &PathBuf) -> Result<(), io::Er
 
         match data {
             Ok(data) => fs::write(path, data)?,
-            Err(e)   => fs::write("./rusty_log.txt", e.to_string()
+            Err(e)   => fs::write("./rusty_error.log", e.to_string()
                 + "\nDecryption Failed."
                 + "\n\nLikely entered an incorrect password or tried to decrypt "
                 + "a file that wasn't encrypted.")?,
