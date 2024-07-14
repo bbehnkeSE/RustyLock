@@ -18,64 +18,70 @@ use std::io;
 use std::fs;
 use std::path::PathBuf;
 
-pub fn encrypt(key: &GenericArray<u8, U32>, dir: &PathBuf) -> io::Result<()> {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
+pub fn encrypt(key: &GenericArray<u8, U32>, path: &PathBuf) -> Result<(), io::Error> {
+    if path.is_dir() {
+        for entry in fs::read_dir(path)? {
             let entry = entry?;
             let path  = entry.path();
 
             encrypt(key, &path)?;
         }
-
     } else {
-        let data: Vec<u8> = fs::read(dir)
-            .expect("Unable to read file.");
+        let data = fs::read(path)?;
+        let encrypted_data = encrypt_file(&data, key);
 
-        let key = Key::<Aes256Gcm>::from_slice(key);
-        let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        let cipher = Aes256Gcm::new(key);
-        let cipher_text = cipher.encrypt(&nonce, &*data)
-            .expect("failed to encrypt");
-    
-        let mut encryped_data: Vec<u8> = nonce.to_vec();
-        encryped_data.extend_from_slice(&cipher_text);
-    
-        fs::write(dir, hex::encode(encryped_data))
-            .expect("Encrypt: Unable to write data.");
+        match encrypted_data {
+            Ok(encrypted_data) => fs::write(path, encrypted_data)?,
+            Err(e) => fs::write("./rusty_log.txt", e.to_string() + "\nEncryption failed.")?
+        };
     }
+    Ok(())
+}
 
-    return Ok(());
+fn encrypt_file(data: &Vec<u8>, key: &GenericArray<u8, U32>) -> Result<Vec<u8>, aes_gcm::Error> {
+    let nonce  = Aes256Gcm::generate_nonce(&mut OsRng);
+    let cipher = Aes256Gcm::new(key);
+    let cipher = cipher.encrypt(&nonce, &**data)?;
+    let mut encrypted_data: Vec<u8> = nonce.to_vec();
+    encrypted_data.extend_from_slice(&cipher);
+
+    Ok(encrypted_data)
 }
 
 
-pub fn decrypt(key: &GenericArray<u8, U32>, dir: &PathBuf) -> io::Result<()> {
-    if dir.is_dir() {
-        for entry in fs::read_dir(dir)? {
+pub fn decrypt(key: &GenericArray<u8, U32>, path: &PathBuf) -> Result<(), io::Error> {
+    if path.is_dir() {
+        for entry in fs::read_dir(path)? {
             let entry = entry?;
             let path  = entry.path();
 
-            decrypt(key, &path)
-                .expect("Decrypt failed.")
+            decrypt(key, &path)?;
         }
 
     } else {
-        let encrypted_data = hex::decode(String::from_utf8(fs::read(dir)
-            .expect("Unable to read file."))
-            .expect("Unable to convert to String from utf8"))
-            .expect("Failed to decode hex string into Vec<u8>.");
+        let encrypted_data = fs::read(path)?;
+        let data = decrypt_file(encrypted_data, key);
 
-        let key = Key::<Aes256Gcm>::from_slice(key);
-        let (nonce_arr, ciphered_data) = encrypted_data.split_at(12);
-        let nonce = Nonce::from_slice(nonce_arr);
-        let cipher = Aes256Gcm::new(key);
-        let decrypted_data = cipher.decrypt(nonce, ciphered_data)
-            .expect("failed to decrypt data");
-    
-        fs::write(dir, decrypted_data)
-            .expect("Decrypt: Unable to write data.");
+        match data {
+            Ok(data) => fs::write(path, data)?,
+            Err(e)   => fs::write("./rusty_log.txt", e.to_string()
+                + "\nDecryption Failed."
+                + "\n\nLikely entered an incorrect password or tried to decrypt "
+                + "a file that wasn't encrypted.")?,
+        };
     }
 
-    return Ok(());
+    Ok(())
+}
+
+fn decrypt_file(encrypted_data: Vec<u8>, key: &GenericArray<u8, U32>) -> Result<Vec<u8>, aes_gcm::Error> {
+    let key    = Key::<Aes256Gcm>::from_slice(key);
+    let (nonce_slice, cipher_data) = encrypted_data.split_at(12);
+    let nonce  = Nonce::from_slice(nonce_slice);
+    let cipher = Aes256Gcm::new(key);
+    let data   = cipher.decrypt(nonce, cipher_data)?;
+
+    Ok(data)
 }
 
 
