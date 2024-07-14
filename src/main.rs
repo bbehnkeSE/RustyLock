@@ -1,10 +1,10 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::env;
-use std::path::Path;
+use std::path::PathBuf;
 
 use eframe::egui;
-use locker::encrypt;
+use locker::{encrypt, decrypt, gen_key};
 
 mod locker;
 
@@ -56,26 +56,28 @@ fn main() {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 enum Control {
+    #[default]
     Encrypt,
     Decrypt
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Options {
     control: Control,
-    path:    String,
+    path:    Vec<PathBuf>,
 }
 
 
 #[derive(Default)]
 struct RustyLock {
-    dropped_files: Vec<egui::DroppedFile>,
-    picked_paths: Vec<Option<String>>,
+    dropped_files:        Vec<egui::DroppedFile>,
     show_password_window: bool,
-    password: String
+    enable_buttons:       bool,
+    password:             String,
+    opts:                 Options
 }
 
 impl RustyLock {
@@ -90,36 +92,35 @@ impl RustyLock {
 
 impl eframe::App for RustyLock {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.dropped_files.is_empty() {
+            self.enable_buttons = false;
+        } else {
+            self.enable_buttons = true;
+        }
+
         egui::TopBottomPanel::bottom("top_bot").show(ctx, |ui| {
-            if ui.button("encrypt").clicked() {
-                println!("Pushed");
-                self.show_password_window = true;
-            }
+            ui.add_enabled_ui(self.enable_buttons, |ui| {
+                if ui.button("Encrypt").clicked() {
+                    self.show_password_window = true;
+                    self.opts.control = Control::Encrypt;
+                }
+                if ui.button("Decrypt").clicked() {
+                    self.show_password_window = true;
+                    self.opts.control = Control::Decrypt;
+                }
+            })
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Drag and drop files.");
 
-            if ui.button("Browse").clicked() {
-                if let Some(path) = rfd::FileDialog::new().pick_file() {
-                    self.picked_paths.push(Some(path.display().to_string()));
-                }
-            }
-
-            for picked_path in &self.picked_paths {
-                if let Some(picked_path) = picked_path {
-                    ui.horizontal(|ui| {
-                        ui.label("Picked file:");
-                        ui.monospace(picked_path);
-                    });
-                }
-            }
-
             if !self.dropped_files.is_empty() {
                 ui.group(|ui| {
                     ui.label("Dropped files:");
-
                     for file in &self.dropped_files {
                         let mut info = if let Some(path) = &file.path {
+                            if !self.opts.path.contains(&path.to_path_buf()) {
+                                self.opts.path.push(path.to_path_buf());
+                            }
                             path.display().to_string()
                         } else if !file.name.is_empty() {
                             file.name.clone()
@@ -166,9 +167,25 @@ impl eframe::App for RustyLock {
                     ui.vertical_centered_justified(|ui| {
                         ui.add_space(20.0);
                         if ui.button("Submit").clicked() {
-                            println!("Password entered: {}", self.password);
                             self.show_password_window = false;
+
+                            match self.opts.control {
+                                Control::Encrypt => {
+                                    for file in self.opts.path.clone() {
+                                        encrypt(&gen_key(self.password.as_bytes()), &file)
+                                            .expect("Encryption failed.");
+                                    }
+                                }
+                                Control::Decrypt => {
+                                    for file in self.opts.path.clone() {
+                                        decrypt(&gen_key(self.password.as_bytes()), &file)
+                                            .expect("Decryption failed.");
+                                    }
+                                }
+                            }
+
                             self.password = "".to_string();
+                            self.opts.path.clear();
                         }
                         if ui.button("Cancel").clicked() {
                             self.password = "".to_string();

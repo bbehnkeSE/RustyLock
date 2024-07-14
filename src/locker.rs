@@ -16,16 +16,15 @@ use sha2::{
 
 use std::io;
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
-pub fn encrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
+pub fn encrypt(key: &GenericArray<u8, U32>, dir: &PathBuf) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
             let path  = entry.path();
 
-            encrypt(key, &path)
-                .expect("Encrypt failed.");
+            encrypt(key, &path)?;
         }
 
     } else {
@@ -49,7 +48,7 @@ pub fn encrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
 }
 
 
-pub fn decrypt(key: &GenericArray<u8, U32>, dir: &Path) -> io::Result<()> {
+pub fn decrypt(key: &GenericArray<u8, U32>, dir: &PathBuf) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
