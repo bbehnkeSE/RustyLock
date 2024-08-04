@@ -197,52 +197,6 @@ impl eframe::App for RustyLock {
                         });
                 }
             }
-
-            // egui::Window::new("Enter password")
-            //     .show(ctx, |ui| {
-            //         ui.add_space(10.0);
-            //         ui.label("Enter a password:");
-            //         ui.add(
-            //             egui::TextEdit::singleline(&mut self.password)
-            //                 .password(true)
-            //         );
-            //         // ui.text_edit_singleline(&mut self.password);
-            //         ui.vertical_centered_justified(|ui| {
-            //             ui.add_space(20.0);
-            //             if ui.button("Submit").clicked() {
-            //                 self.show_password_window = false;
-
-            //                 match self.opts.control {
-            //                     Control::Encrypt => {
-            //                         for path in self.opts.paths.clone() {
-            //                             let enc_result = aes::encrypt(&aes::gen_key(self.password.as_bytes()), &path);
-            //                             match enc_result {
-            //                                 Ok(_) => (),
-            //                                 Err(e) => fs::write("./rusty_error.log", e.to_string())
-            //                                     .expect("Failed to write to error log")
-            //                             }
-            //                         }
-            //                     }
-            //                     Control::Decrypt => {
-            //                         for path in self.opts.paths.clone() {
-            //                             let dec_result = aes::decrypt(&aes::gen_key(self.password.as_bytes()), &path);
-            //                             match dec_result {
-            //                                 Ok(_) => (),
-            //                                 Err(e) => fs::write("./rusty_error.log", e.to_string())
-            //                                     .expect("Failed to write to error log")
-            //                             }
-            //                         }
-            //                     }
-            //                 }
-            //                 self.password = "".to_string();
-            //                 self.opts.paths.clear();
-            //             }
-            //             if ui.button("Cancel").clicked() {
-            //                 self.password = "".to_string();
-            //                 self.show_password_window = false;
-            //             }
-            //         })
-            //     });
         }
     }
 }
