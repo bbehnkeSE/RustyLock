@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use eframe::egui;
+use eframe::egui::{self, Color32};
 use std::fs;
 
 use crate::aes;
@@ -10,6 +10,7 @@ pub struct RustyLock {
     show_password_window: bool,
     enable_buttons:       bool,
     password:             String,
+    password_confirm:     String,
     opts:                 Options
 }
 
@@ -24,7 +25,7 @@ pub enum Control {
 #[derive(Debug, Default)]
 pub struct Options {
     pub control: Control,
-    pub paths:    Vec<PathBuf>,
+    pub paths:   Vec<PathBuf>,
 }
 
 // impl RustyLock {
@@ -102,51 +103,146 @@ impl eframe::App for RustyLock {
         });
 
         if self.show_password_window {
-            egui::Window::new("Enter password")
-                .show(ctx, |ui| {
-                    ui.add_space(10.0);
-                    ui.label("Enter a password:");
-                    ui.add(
-                        egui::TextEdit::singleline(&mut self.password)
-                            .password(true)
-                    );
-                    // ui.text_edit_singleline(&mut self.password);
-                    ui.vertical_centered_justified(|ui| {
-                        ui.add_space(20.0);
-                        if ui.button("Submit").clicked() {
-                            self.show_password_window = false;
+            match self.opts.control {
+                Control::Encrypt => {
+                    egui::Window::new("Enter password")
+                        .show(ctx, |ui| {
+                            ui.add_space(10.0);
+                            ui.label("Enter a password:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.password)
+                                    .password(true)
+                            );
+                            ui.add_space(10.0);
+                            ui.label("Confirm password:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.password_confirm)
+                                    .password(true)
+                            );
 
-                            match self.opts.control {
-                                Control::Encrypt => {
-                                    for path in self.opts.paths.clone() {
-                                        let enc_result = aes::encrypt(&aes::gen_key(self.password.as_bytes()), &path);
-                                        match enc_result {
-                                            Ok(_) => (),
-                                            Err(e) => fs::write("./rusty_error.log", e.to_string())
-                                                .expect("Failed to write to error log")
+                            let passwords_match: bool = self.password == self.password_confirm && self.password.len() > 0;
+                            let label_text = if passwords_match {
+                                "Passwords match!"
+                            } else {
+                                "Passwords do not match"
+                            };
+                            let label_color = if passwords_match {
+                                Color32::GREEN
+                            } else {
+                                Color32::RED
+                            };
+
+                            ui.colored_label(label_color, label_text);
+
+                            ui.vertical_centered_justified(|ui| {
+                                ui.add_enabled_ui(passwords_match, |ui| {
+                                    ui.add_space(20.0);
+                                    if ui.button("Submit").clicked() {
+                                        self.show_password_window = false;
+                                        for path in self.opts.paths.clone() {
+                                            let enc_result = aes::encrypt(
+                                                &aes::gen_key(&self.password.as_bytes()), &path
+                                            );
+                                            
+                                            match enc_result {
+                                                Ok(_) => (),
+                                                Err(e) => fs::write("./rusty_error.log", e.to_string())
+                                                    .expect("Failed to write to error log")
+                                            }
                                         }
+                                        self.password = String::from("");
+                                        self.password_confirm = String::from("");
+                                        self.opts.paths.clear();
                                     }
-                                }
-                                Control::Decrypt => {
+                                    if ui.button("Cancel").clicked() {
+                                        self.password = String::from("");
+                                        self.show_password_window = false;
+                                    }
+                                })
+                            })
+                        });
+                }
+                Control::Decrypt => {
+                    egui::Window::new("Enter password")
+                        .show(ctx, |ui| {
+                            ui.add_space(10.0);
+                            ui.label("Enter a password:");
+                            ui.add(
+                                egui::TextEdit::singleline(&mut self.password)
+                                    .password(true)
+                            );
+                            ui.vertical_centered_justified(|ui| {
+                                ui.add_space(20.0);
+                                if ui.button("Submit").clicked() {
+                                    self.show_password_window = false;
+
                                     for path in self.opts.paths.clone() {
-                                        let dec_result = aes::decrypt(&aes::gen_key(self.password.as_bytes()), &path);
+                                        let dec_result = aes::decrypt(
+                                            &aes::gen_key(&self.password.as_bytes()), &path
+                                        );
                                         match dec_result {
                                             Ok(_) => (),
                                             Err(e) => fs::write("./rusty_error.log", e.to_string())
                                                 .expect("Failed to write to error log")
                                         }
                                     }
+                                    self.password = String::from("");
+                                    self.opts.paths.clear();
                                 }
-                            }
-                            self.password = "".to_string();
-                            self.opts.paths.clear();
-                        }
-                        if ui.button("Cancel").clicked() {
-                            self.password = "".to_string();
-                            self.show_password_window = false;
-                        }
-                    })
-                });
+                                if ui.button("Cancel").clicked() {
+                                    self.password = String::from("");
+                                    self.show_password_window = false;
+                                }
+                            })
+                        });
+                }
+            }
+
+            // egui::Window::new("Enter password")
+            //     .show(ctx, |ui| {
+            //         ui.add_space(10.0);
+            //         ui.label("Enter a password:");
+            //         ui.add(
+            //             egui::TextEdit::singleline(&mut self.password)
+            //                 .password(true)
+            //         );
+            //         // ui.text_edit_singleline(&mut self.password);
+            //         ui.vertical_centered_justified(|ui| {
+            //             ui.add_space(20.0);
+            //             if ui.button("Submit").clicked() {
+            //                 self.show_password_window = false;
+
+            //                 match self.opts.control {
+            //                     Control::Encrypt => {
+            //                         for path in self.opts.paths.clone() {
+            //                             let enc_result = aes::encrypt(&aes::gen_key(self.password.as_bytes()), &path);
+            //                             match enc_result {
+            //                                 Ok(_) => (),
+            //                                 Err(e) => fs::write("./rusty_error.log", e.to_string())
+            //                                     .expect("Failed to write to error log")
+            //                             }
+            //                         }
+            //                     }
+            //                     Control::Decrypt => {
+            //                         for path in self.opts.paths.clone() {
+            //                             let dec_result = aes::decrypt(&aes::gen_key(self.password.as_bytes()), &path);
+            //                             match dec_result {
+            //                                 Ok(_) => (),
+            //                                 Err(e) => fs::write("./rusty_error.log", e.to_string())
+            //                                     .expect("Failed to write to error log")
+            //                             }
+            //                         }
+            //                     }
+            //                 }
+            //                 self.password = "".to_string();
+            //                 self.opts.paths.clear();
+            //             }
+            //             if ui.button("Cancel").clicked() {
+            //                 self.password = "".to_string();
+            //                 self.show_password_window = false;
+            //             }
+            //         })
+            //     });
         }
     }
 }
