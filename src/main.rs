@@ -61,11 +61,17 @@ fn main() {
 
         match opt.control {
             gui::Control::Encrypt => {
-                let enc_result = aes::encrypt(&key, &pth);
-                match enc_result {
-                    Ok(_) => (),
-                    Err(e) => fs::write("./rusty_error.log", e.to_string())
-                        .expect("Failed to write to error log")
+                let password_confirm = rpassword::prompt_password("Confirm password: ").unwrap();
+                if password == password_confirm {
+                    let enc_result = aes::encrypt(&key, &pth);
+                    match enc_result {
+                        Ok(_) => (),
+                        Err(e) => fs::write("./rusty_error.log", e.to_string())
+                            .expect("Failed to write to error log")
+                    }
+                } else {
+                    println!("Passwords do not match!");
+                    process::exit(1);
                 }
             }
             gui::Control::Decrypt => {
